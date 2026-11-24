@@ -33,11 +33,19 @@ reference: [`docs/develop_plugin.md`](docs/develop_plugin.md).
 - **MCP servers go in two files** — `.mcp.json` (Claude Code, Codex) and `mcp.json`
   (Cursor), with the same servers.
 
+- **The MCP server lives in `mcp/`** (TypeScript, `@modelcontextprotocol/sdk`, stdio). It talks
+  to Hatcher only through its REST API (Hatcher's `docs/api.md`) and reads `HATCHER_URL` and
+  `HATCHER_API_KEY` from the environment. Never put keys or URLs in config files.
+- **`mcp/dist/hatcher-mcp.mjs` is built and committed** so installs need no `npm install`. After
+  changing `mcp/src/`, run `npm run build` in `mcp/` and commit the result; CI fails if it is stale.
+  Bump `VERSION` in `mcp/src/index.ts` and `mcp/package.json` with the manifests.
+
 ## Before you finish
 
 ```bash
 scripts/gen_catalog.sh               # if any plugin.json changed
 scripts/validate_plugin.sh --strict  # must end with "Validation passed."
+(cd mcp && npm run check && npm test && npm run build && git diff --exit-code dist)
 ```
 
 The task is not done until the validator exits 0.

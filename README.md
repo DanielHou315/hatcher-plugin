@@ -1,156 +1,114 @@
-# multi-harness-plugin-template
+# Hatcher client plugin
 
-[![Validate plugin](https://github.com/DanielHou315/multi-harness-plugin-template/actions/workflows/validate.yml/badge.svg)](https://github.com/DanielHou315/multi-harness-plugin-template/actions/workflows/validate.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Use this template](https://img.shields.io/badge/-Use%20this%20template-2ea44f?logo=github)](https://github.com/DanielHou315/multi-harness-plugin-template/generate)
+Lets your agent publish and update private, shareable HTML pages on your self-hosted
+[Hatcher](https://github.com/DanielHou315/Hatcher) server. It contains:
 
-**A Claude Code plugin template that also ships as a Cursor plugin, a Codex plugin,
-a pi package, and an opencode plugin — from one source tree.** Write your
-[Agent Skills](https://agentskills.io) (`SKILL.md`), slash commands, subagents, and
-MCP servers once; the repo is its own one-plugin marketplace, and a validator in CI
-keeps the manifests in sync.
+- **`hatcher` MCP server** (`mcp/`): a local, stdio MCP server that calls Hatcher's REST API with your
+  API key. It can upload a page straight from a folder on your machine and download one to edit,
+  so whole pages do not have to pass through the conversation.
+- **`hatcher` skill** (`skills/hatcher/`): when to use Hatcher and how to work with pages (read
+  before changing, versions, what pages may load, errors).
 
-The repository root *is* the plugin: shared components (`skills/`, `commands/`,
-`agents/`) sit at the top level, a small manifest per harness describes them, and a
-generated one-entry catalog makes the repo installable as a marketplace.
-One repository, one plugin — create a new repository from this template for each
-plugin you build.
+Needs Node.js 20 or later and Hatcher 0.3 or later.
 
-### Supported harnesses
+## Setup
 
-| Harness | Manifest | Loads | Install from |
-|---|---|---|---|
-| Claude Code | `.claude-plugin/plugin.json` | skills, commands, agents, hooks, `.mcp.json` | the repo as a marketplace |
-| Cursor | `.cursor-plugin/plugin.json` | skills, commands, agents, `rules/*.mdc`, `mcp.json` | the repo |
-| Codex | `.codex-plugin/plugin.json` | skills, hooks, `.mcp.json` | the same marketplace |
-| [pi](https://github.com/earendil-works/pi) | `package.json` (`"pi"` key) | skills, commands (as prompt templates) | `pi install git:…` |
-| [opencode](https://opencode.ai) | `.opencode-plugin/` adapter | skills, commands, agents, `.mcp.json` | `opencode plugin github:…` |
+1. On your Hatcher site, open **Account → API keys** and create a key: **read and write** to publish,
+   **read** to only look.
+2. Make two environment variables available where your agent starts (your shell profile, direnv, or
+   the agent's own settings):
 
-Exact install commands and per-harness caveats are in
-[How one tree serves three harnesses](#how-one-tree-serves-three-harnesses),
-[pi](#pi), and [opencode](#opencode) below.
-
-## Quick start
-
-1. Click **Use this template** on GitHub (or
-   `gh repo create my-plugin --template DanielHou315/multi-harness-plugin-template --private --clone`).
-2. Initialise it — this renames the plugin in both manifests, writes a starter
-   README over this one, regenerates the catalog, validates, and then removes itself:
-
-   ```bash
-   scripts/init_plugin.sh doc-translator "Translate Markdown docs between languages. Use when asked to translate or localise documentation."
+   ```sh
+   export HATCHER_URL=https://hatcher.example.com
+   export HATCHER_API_KEY=hk_...
    ```
 
-   Author name and email default to your `git config`; see
-   `scripts/init_plugin.sh --help` for `--display-name`, `--author`, `--email`,
-   `--category`, and `--keep`.
-3. Replace the example components with real ones and commit.
+3. Install the plugin (below) and restart the agent. Ask it to "call the hatcher guide tool": the
+   first line says which site and account it is connected as.
 
-Requires `bash` and [`jq`](https://jqlang.github.io/jq/).
+## Installation
 
-## What's in the box
+### Claude Code
 
-```
-├── .claude-plugin/
-│   ├── plugin.json            # Claude Code manifest
-│   └── marketplace.json       # one-entry catalog — GENERATED, do not edit
-├── .cursor-plugin/plugin.json # Cursor manifest
-├── .codex-plugin/plugin.json  # Codex manifest
-├── .opencode-plugin/          # opencode adapter (package.json + index.js)
-├── marketplace.config.json    # catalog-only fields (category)
-├── package.json               # pi package manifest ("pi" key)
-├── skills/example-skill/SKILL.md
-├── commands/example-command.md
-├── agents/example-agent.md
-├── scripts/
-│   ├── init_plugin.sh         # one-shot: template -> your plugin
-│   ├── gen_catalog.sh         # regenerates the catalog from plugin.json
-│   └── validate_plugin.sh     # the validator (CI + local)
-├── docs/develop_plugin.md     # full structure reference
-├── AGENTS.md                  # rules for coding agents working on the plugin
-└── .github/workflows/validate.yml
+```sh
+claude plugin marketplace add DanielHou315/hatcher-client-plugin
+claude plugin install hatcher@hatcher
 ```
 
-## How one tree serves three harnesses
+### Codex
 
-| | Claude Code | Cursor | Codex |
-|---|---|---|---|
-| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.codex-plugin/plugin.json` |
-| Installed via | `.claude-plugin/marketplace.json` (`"source": "./"`) | the repo itself | the same Claude catalog |
-| Install | `claude plugin marketplace add <owner>/<repo>` then `claude plugin install <name>@<name>` | add the repo in plugin settings | `codex plugin marketplace add <owner>/<repo>` then `codex plugin add <name>@<name>` |
+```sh
+codex plugin marketplace add DanielHou315/hatcher-client-plugin
+codex plugin add hatcher@hatcher
+```
 
-### pi
+### Cursor
 
-| | pi coding agent |
+Add this repository in Cursor's plugin settings; it reads `.cursor-plugin/plugin.json`.
+
+### pi and opencode
+
+```sh
+pi install git:github.com/DanielHou315/hatcher-client-plugin        # the skill only: pi has no MCP
+opencode plugin -g github:DanielHou315/hatcher-client-plugin
+```
+
+### The MCP server outside Claude Code
+
+The plugin's MCP config points at the server with `${CLAUDE_PLUGIN_ROOT}`, which Claude Code and the
+opencode adapter fill in. If the `hatcher` tools do not appear in another agent, clone this
+repository and register the server yourself, for example:
+
+```sh
+codex mcp add hatcher --env HATCHER_URL=https://hatcher.example.com --env HATCHER_API_KEY=hk_... \
+  -- node /path/to/hatcher-client-plugin/mcp/dist/hatcher-mcp.mjs
+```
+
+or in a client's JSON config:
+
+```json
+{ "mcpServers": { "hatcher": {
+    "command": "node",
+    "args": ["/path/to/hatcher-client-plugin/mcp/dist/hatcher-mcp.mjs"],
+    "env": { "HATCHER_URL": "https://hatcher.example.com", "HATCHER_API_KEY": "hk_..." } } } }
+```
+
+`mcp/dist/hatcher-mcp.mjs` is one bundled file; it needs no `npm install`.
+
+## Tools
+
+| Tool | Does |
 |---|---|
-| Manifest | `package.json` (the `"pi"` key) |
-| Installed via | the repo itself as a pi package (git, npm, or local path) |
-| Install | `pi install git:github.com/<owner>/<repo>` (append `@<ref>` to pin) |
-| Loads | `skills/` as skills; `commands/*.md` as prompt templates (`/example-command`) |
-| Not loaded | `agents/` (no subagents), `rules/`, `.mcp.json` (no built-in MCP) |
+| `guide` | Who you are connected as, what the key may do, allowed CDN hosts, limits, page format |
+| `list_pages` | Pages you own or that are shared with you |
+| `get_page` | Details, files and `index.html` of a page (or of one version) |
+| `read_file` | One file, as text or base64 |
+| `list_versions` | Version history |
+| `download_page` | Write a page's files into a local folder |
+| `create_page` | New page from a local `folder` and/or `files` (`text`, `base64`, or `from` a local path) |
+| `update_page` | New version: changed files and deletions, or make the page match a local `folder`; also title and description |
+| `restore_version` | Copy an earlier version forward as a new one |
 
-### opencode
+Local paths must be absolute (or start with `~/`). Sharing and deleting stay in Hatcher's web UI.
 
-| | opencode |
-|---|---|
-| Manifest | `.opencode-plugin/package.json` (plugin id = `name`) + `index.js` adapter |
-| Installed via | the repo as a git package (root `package.json` `exports["./server"]` → the adapter), or a local clone |
-| Install | `opencode plugin -g github:<owner>/<repo>` (append `#<ref>` to pin) |
-| Loads | `skills/` (via `skills.paths`), `commands/*.md` as commands, `agents/*.md` as subagents, `.mcp.json` servers |
-| Not loaded | `rules/`, `hooks/`; Claude-only frontmatter (`allowed-tools`, `tools`, `model: sonnet`) |
+## Development
 
-From a local clone instead: `opencode plugin -g <dir>/.opencode-plugin` (then
-`git pull` there to update). Skills-only alternative, no adapter:
-`"skills": {"paths": ["<dir>/skills"]}` in `opencode.json`.
-
-## Day-to-day
-
-```bash
-scripts/gen_catalog.sh               # after editing a plugin.json or marketplace.config.json
-scripts/validate_plugin.sh --strict  # before every commit; CI runs the same
-claude plugin validate . --strict    # optional, official Claude Code checker
-claude --plugin-dir .                # try the plugin without installing it
+```sh
+cd mcp
+npm install
+npm run check && npm test
+npm run build      # rebuilds dist/hatcher-mcp.mjs: commit it with the source
 ```
 
-See [`docs/develop_plugin.md`](docs/develop_plugin.md) for manifest fields,
-component frontmatter, optional config files (MCP, hooks, rules), and everything
-the validator checks.
+Then, from the repository root (see [`docs/develop_plugin.md`](docs/develop_plugin.md)):
 
-## Contributing
+```sh
+scripts/gen_catalog.sh               # after editing a plugin.json
+scripts/validate_plugin.sh --strict
+```
 
-Direct pushes to `main` are not accepted. Fork the repository, make your change on
-a branch in your fork, and open a pull request against `main`. CI must pass
-(`scripts/validate_plugin.sh --strict`) before a PR can be merged.
+Try it in Claude Code without installing: `claude --plugin-dir .`
 
-## FAQ
+---
 
-### How do I make a Claude Code plugin that also works in Cursor and Codex?
-
-Create a repository from this template and run `scripts/init_plugin.sh`. All three
-harnesses read the same `skills/`, `commands/`, and `agents/` directories; each
-only needs its own small manifest (`.claude-plugin/`, `.cursor-plugin/`,
-`.codex-plugin/`), which the init script fills in and the validator keeps in sync.
-Codex installs from the same `marketplace.json` as Claude Code.
-
-### Can I publish Agent Skills (`SKILL.md`) this way without writing a full plugin?
-
-Yes. A plugin with only a `skills/` directory is valid — delete the example command
-and agent. The skills load in every harness above, including pi and opencode.
-
-### Do I need a separate marketplace repository?
-
-No. `scripts/gen_catalog.sh` generates a one-entry `.claude-plugin/marketplace.json`
-pointing at the repo root (`"source": "./"`), so `claude plugin marketplace add
-<owner>/<repo>` (or `codex plugin marketplace add`) works on the plugin repo itself.
-
-### How do I add an MCP server?
-
-Declare it in `.mcp.json` (Claude Code, Codex, opencode) and the same servers in
-`mcp.json` (Cursor). See [`docs/develop_plugin.md`](docs/develop_plugin.md) for
-`${CLAUDE_PLUGIN_ROOT}` handling in each harness. pi has no built-in MCP support.
-
-### How do I keep the manifests from drifting?
-
-Run `scripts/validate_plugin.sh --strict` before committing; the included GitHub
-Actions workflow runs it on every pull request. It checks name/version parity across
-all manifests, frontmatter on every component, and that the catalog isn't stale.
+Built with [multi-harness-plugin-template](https://github.com/DanielHou315/multi-harness-plugin-template).

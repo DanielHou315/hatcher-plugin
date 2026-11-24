@@ -1,15 +1,13 @@
 {
-  "name": "my-plugin",
-  "version": "0.0.0",
-  "description": "Template plugin — run scripts/init_plugin.sh to rename it, then describe what the plugin does and when to use it.",
+  "name": "hatcher",
+  "version": "0.1.0",
+  "description": "Publish and update private, shareable HTML pages on your self-hosted Hatcher server from your agent: a local MCP server and a skill. Use when asked to put something on Hatcher or to make a page, chart, demo or report others can open.",
   "author": {
-    "name": "Your Name",
-    "email": "you@example.com"
+    "name": "Daniel Hou",
+    "email": "danielhou315@gmail.com"
   },
   "license": "MIT",
-  "keywords": [
-    "template"
-  ],
+  "keywords": [],
   "type": "module",
   "main": "./index.js"
 }
